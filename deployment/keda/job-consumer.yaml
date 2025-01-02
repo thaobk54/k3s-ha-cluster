@@ -30,8 +30,8 @@ roleRef:
 ---
 apiVersion: v1
 data:
-  AWS_ACCESS_KEY_ID: QUtJQTRRNkNMTFBKWlFEU1JLNk4=
-  AWS_SECRET_ACCESS_KEY: WnFYYkdLVkVLLzZLUGVJdWhmMXZ4WDdhOTByTHpWQkxZYVpoRm1USg==
+  AWS_ACCESS_KEY_ID: QUtJQTRaUFpWTUZJQVlaNUczTjY=
+  AWS_SECRET_ACCESS_KEY: ZXl2UjYvVEMrbFMvU1NReUpPZnloY2ErQmd1ZVRLQVo0R3ZqUnNiRg==
 kind: Secret
 metadata:
   name: aws-secret
@@ -90,7 +90,7 @@ spec:
           role: "worker"
         containers:
           - name: main
-            image: public.ecr.aws/s9j3e2g3/valuead-sale-job:v4.1.4a
+            image: thaovu/valuead_java_job:v4.1.4a
             imagePullPolicy: IfNotPresent
             resources:
               requests:
@@ -109,9 +109,9 @@ spec:
                   fieldRef:
                     fieldPath: metadata.namespace
               - name: AWS_DEFAULT_REGION
-                value: ap-southeast-2
+                value: us-east-1
               - name: AWS_REGION
-                value: ap-southeast-2
+                value: us-east-1
               - name: AWS_ACCESS_KEY_ID
                 valueFrom:
                   secretKeyRef:
@@ -150,7 +150,7 @@ spec:
         name: keda-trigger-auth-aws-credentials    
       metadata:
         scaleOnInFlight: "false"
-        queueURL: https://sqs.ap-southeast-2.amazonaws.com/861011663827/ValueAD
-        awsRegion: "ap-southeast-2"
+        queueURL: https://sqs.us-east-1.amazonaws.com/879381274960/ValueAD
+        awsRegion: "us-east-1"
         queueLength: "1"
         # visibilityTimeoutSeconds: "30"
