@@ -1,0 +1,19 @@
+k3s_server_lb_dns_name = "K3S_SERVER"
+k3s_token = "K3S_TOKEN"
+proxmox_node = "agileops182"
+node_template = "ubuntu2204-test"
+pm_api_url   = "https://10.182.4.10:8006/api2/json"
+pm_user      = "root@pam"
+pm_password  = "socolatraidua1206"
+worker_node_settings = {
+    cores          = 2
+    sockets        = 1
+    memory         = 4096
+    storage_type   = "disk"
+    storage_id     = "local-lvm"
+    disk_size      = "73932M"
+    user           = "k3s"
+    network_bridge = "vmbr0"
+    network_tag    = -1
+  }
+netbird_key = "DA2F280D-6EBC-4B26-B46A-5B6F469F019E"

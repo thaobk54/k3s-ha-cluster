@@ -1,0 +1,156 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: sales-job
+  namespace: jobs
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: jobs
+  name: sales-job-role
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: sales-job-rolebinding
+  namespace: jobs
+subjects:
+- kind: ServiceAccount
+  name: sales-job
+  namespace: jobs
+roleRef:
+  kind: Role
+  name: sales-job-role
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+data:
+  AWS_ACCESS_KEY_ID: QUtJQTRRNkNMTFBKWlFEU1JLNk4=
+  AWS_SECRET_ACCESS_KEY: WnFYYkdLVkVLLzZLUGVJdWhmMXZ4WDdhOTByTHpWQkxZYVpoRm1USg==
+kind: Secret
+metadata:
+  name: aws-secret
+  namespace: jobs
+---
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: keda-trigger-auth-aws-credentials
+  namespace: jobs
+spec:
+  secretTargetRef:
+  - parameter: awsAccessKeyID
+    name: aws-secret
+    key: AWS_ACCESS_KEY_ID
+  - parameter: awsSecretAccessKey
+    name: aws-secret
+    key: AWS_SECRET_ACCESS_KEY
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: sales-job-new
+  namespace: jobs
+spec:
+  rollout:
+    strategy: gradual
+  jobTargetRef:
+    backoffLimit: 20
+    template:
+      metadata:
+        labels:
+          app: sales-job
+      spec:
+        affinity:
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+              - weight: 1
+                podAffinityTerm:
+                  labelSelector:
+                    matchExpressions:
+                      - key: app
+                        operator: In
+                        values:
+                          - sales-job
+                  topologyKey: "kubernetes.io/hostname"
+        topologySpreadConstraints:
+          - maxSkew: 3
+            topologyKey: "kubernetes.io/hostname"
+            whenUnsatisfiable: ScheduleAnyway
+            labelSelector:
+              matchLabels:
+                app: sales-job
+        serviceAccountName: sales-job
+        nodeSelector:
+          role: "worker"
+        containers:
+          - name: main
+            image: public.ecr.aws/s9j3e2g3/valuead-sale-job:v4.1.4a
+            imagePullPolicy: IfNotPresent
+            resources:
+              requests:
+                memory: 3584Mi
+                cpu: 2
+              limits:
+                memory: 3584Mi
+                cpu: 2
+            env:
+              - name: POD_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.name
+              - name: NAMESPACE
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.namespace
+              - name: AWS_DEFAULT_REGION
+                value: ap-southeast-2
+              - name: AWS_REGION
+                value: ap-southeast-2
+              - name: AWS_ACCESS_KEY_ID
+                valueFrom:
+                  secretKeyRef:
+                    name: aws-secret
+                    key: AWS_ACCESS_KEY_ID
+              - name: AWS_SECRET_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: aws-secret
+                    key: AWS_SECRET_ACCESS_KEY
+              - name: MAX_MEMORY
+                value: 3g
+              - name: METASPACE_SIZE
+                value: 256m
+              - name: COMPRESSED_CLASS_SPACE_SIZE
+                value: 64m
+              - name: NON_METHOD_CODE_HEAP_SIZE
+                value: 5m
+              - name: PROFILED_CODE_HEAP_SIZE
+                value: 48m
+              - name: NON_PROFILED_CODE_HEAP_SIZE
+                value: 48m
+              # NON_METHOD_CODE_HEAP_SIZE + PROFILED_CODE_HEAP_SIZE + NON_PROFILED_CODE_HEAP_SIZE
+              - name: RESERVED_CODE_CACHE_SIZE
+                value: 101m
+        restartPolicy: Never
+  pollingInterval: 60 # Optional. Default: 30 seconds
+  successfulJobsHistoryLimit: 0 # Optional. Default: 100. Number of successful jobs to keep.
+  failedJobsHistoryLimit: 0 # Optional. Default: 100. Number of failed jobs to keep.
+  maxReplicaCount: 1500 # Optional. Default: 100
+  scalingStrategy:
+    strategy: accurate
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: keda-trigger-auth-aws-credentials    
+      metadata:
+        scaleOnInFlight: "false"
+        queueURL: https://sqs.ap-southeast-2.amazonaws.com/861011663827/ValueAD
+        awsRegion: "ap-southeast-2"
+        queueLength: "1"
+        # visibilityTimeoutSeconds: "30"

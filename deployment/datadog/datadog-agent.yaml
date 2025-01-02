@@ -1,0 +1,25 @@
+apiVersion: "datadoghq.com/v2alpha1"
+kind: "DatadogAgent"
+metadata:
+  name: "datadog"
+  namespace: "datadog"
+spec:
+  global:
+    clusterName: "cloud-assembly"
+    site: "ap1.datadoghq.com"
+    credentials:
+      apiSecret:
+        secretName: "datadog-secret"
+        keyName: "api-key"
+  features:
+    liveProcessCollection:
+      enabled: true
+    logCollection:
+      enabled: true
+      containerCollectAll: true
+    npm:
+      enabled: true
+  override:
+    nodeAgent:
+      tolerations:
+        - operator: Exists

@@ -1,0 +1,86 @@
+#!/bin/bash
+
+export AWS_DEFAULT_REGION=us-east-2
+# Generate a UUID
+UUID=$(uuidgen)
+HOSTNAME=$(hostname)
+# Create a short version (first 8 characters) using cut
+SHORT_UUID=$(echo $UUID | cut -d'-' -f1)
+
+# Create a hostname using the short UUID
+HOSTNAME="$HOSTNAME-$SHORT_UUID"
+
+# Create a tag using the short UUID
+TAG="k3s-master:aws"
+
+# Check if jq is installed, and install it if not
+if ! command -v jq &> /dev/null; then
+    log "jq is not installed. Installing jq..."
+    sudo apt-get update && sudo apt-get install -y jq uuid awscli
+    if [ $? -ne 0 ]; then
+        log "Failed to install jq and uuid"
+        exit 1
+    fi
+fi
+
+install_netbird() {
+    curl -fsSL https://pkgs.netbird.io/install.sh | sh
+    netbird up --setup-key ${netbird_key}
+
+    OVERLAY_IP=$(ip -4 addr show dev wt0 | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+}
+
+install_k3s() {
+    log "Installing k3s..."
+    curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="${k3s_version}" sh -s - ${mode} \
+    --disable traefik \
+    --disable servicelb \
+    --token "${k3s_token}" \
+    ${node_labels} \
+    --tls-san=$OVERLAY_IP \
+    --tls-san="${alt_names}" \
+    --datastore-endpoint="mysql://${k3s_database_user}:${k3s_database_password}@tcp(${k3s_database_endpoint})/${k3s_database_name}" \
+    --log $HOME/.k3s-install-log.txt \
+    --disable-network-policy \
+    --node-ip=$OVERLAY_IP \
+    --node-name=$HOSTNAME \
+    --flannel-iface=wt0 \
+    --cluster-cidr="${k3s_cluster_cidr}" \
+    --service-cidr="${k3s_service_cidr}" \
+    --cluster-dns="${k3s_cluster_dns}"
+
+}
+
+cp_kubeconfig_to_s3() {
+    # Define the file path
+    K3S_YAML_PATH="/etc/rancher/k3s/k3s.yaml"
+    
+    # Update the k3s.yaml file to replace 127.0.0.1 with alt_names
+    sed -i "s|127.0.0.1|${alt_names}|g" $K3S_YAML_PATH
+
+    # Set permissions and copy the updated kubeconfig to S3
+    sudo chmod 777 $K3S_YAML_PATH
+    aws s3 cp $K3S_YAML_PATH s3://${s3_bucket_kubeconfig}/k3s.yaml
+}
+
+put_k3s_parameters_store() {
+    token=$(sudo cat /var/lib/rancher/k3s/server/token)
+
+    aws ssm put-parameter \
+    --name "K3S_TOKEN" \
+    --value "$token" \
+    --type "SecureString" \
+    --overwrite
+
+    aws ssm put-parameter \
+    --name "K3S_SERVER" \
+    --value "${alt_names}" \
+    --type "SecureString" \
+    --overwrite    
+}
+
+install_netbird
+install_k3s
+sleep 30
+cp_kubeconfig_to_s3
+put_k3s_parameters_store

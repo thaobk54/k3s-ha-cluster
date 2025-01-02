@@ -1,0 +1,19 @@
+k3s_server_lb_dns_name = "K3S_SERVER"
+k3s_token = "K3S_TOKEN"
+proxmox_node = "ProxmoxV31"
+node_template = "k3s-worker-proxmox-template"
+pm_api_url   = "https://192.168.1.105:8006//api2/json"
+pm_user      = "Thao@pve"
+pm_password  = "7hG!2B$r5Lq@9Wz"
+worker_node_settings = {
+    cores          = 2
+    sockets        = 1
+    memory         = 4096
+    storage_type   = "disk"
+    storage_id     = "px6-300d"
+    disk_size      = "73932M"
+    user           = "k3s"
+    network_bridge = "vmbr0"
+    network_tag    = -1
+  }
+netbird_key = "2B9B2976-444E-440B-8BA1-B6E3820AA305"
