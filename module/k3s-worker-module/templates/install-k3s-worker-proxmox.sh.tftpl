@@ -15,14 +15,14 @@ TAG="k3s-worker:proxmox"
 
 
 # Check if jq is installed, and install it if not
-if ! command -v jq &> /dev/null; then
-    log "jq is not installed. Installing jq..."
-    sudo apt-get update && sudo apt-get install -y jq uuid awscli
-    if [ $? -ne 0 ]; then
-        log "Failed to install jq and uuid"
-        exit 1
-    fi
-fi
+# if ! command -v jq &> /dev/null; then
+#     log "jq is not installed. Installing jq..."
+#     sudo apt-get update && sudo apt-get install -y jq uuid awscli
+#     if [ $? -ne 0 ]; then
+#         log "Failed to install jq and uuid"
+#         exit 1
+#     fi
+# fi
 
 install_netbird() {
     curl -fsSL https://pkgs.netbird.io/install.sh | sh

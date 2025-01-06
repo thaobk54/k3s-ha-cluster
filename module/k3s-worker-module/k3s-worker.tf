@@ -51,7 +51,7 @@ resource "proxmox_vm_qemu" "k3s-workers" {
 
     }
     ide {
-        ide2 {
+        ide0 {
             cloudinit {
                 storage = local.worker_node_settings.storage_id
             }
